@@ -48,23 +48,21 @@ fn call_abi<M: Message, R: Message, F: Fn(*const u8) -> *const u8>(f: F, request
     ptr_into_message(f(msg_to_ptr(request)))
 }
 
-pub fn call_host() {
-    let mut request = Request::new();
-    request.message = "Hello from guest!".to_string();
-
-    let response: Response = call_abi(|ptr| unsafe { host_hello(ptr) }, &request);
-
-    println!("Received from host: {}", response.reply);
-}
-
 #[no_mangle]
 pub extern "C" fn guest_func(ptr: *const u8) -> *const u8 {
     // Decode the request from the host and free it
     let request: Request = ptr_into_message(ptr);
 
-    // Process the request (for demonstration purposes, just echoing the message back)
+    // Prepare response
     let mut response = Response::new();
-    response.reply = format!("Echoing: {}", request.message);
+
+    // call the host ABI
+    {
+        let mut abi_request = Request::new();
+        abi_request.message = request.message;
+        let abi_response: Response = call_abi(|ptr| unsafe { host_hello(ptr) }, &abi_request);
+        response.reply = abi_response.reply;
+    }
 
     // Encode and return the response
     msg_to_ptr(&response)
