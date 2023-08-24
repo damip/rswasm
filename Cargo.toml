@@ -28,3 +28,4 @@ crate-type = ["cdylib"]
 panic = 'abort'
 lto = true # link-time optimization
 opt-level = 'z' # optimize for size
+codegen-units = 1
