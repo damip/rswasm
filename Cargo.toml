@@ -1,0 +1,30 @@
+[package]
+name = "rust_wasm_guest"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+protobuf = "3"
+
+[build-dependencies]
+protobuf-codegen = "3"
+protoc-rust = "^2.0"
+
+# setup the allocator for wasm
+[dependencies.wee_alloc]
+version = "0.4.5"
+default-features = false # this turns off the "std" feature for the crate, reducing size
+features = ["size_classes"] # an optional feature to optimize for size
+optional = true # mark wee_alloc as an optional dependency
+
+[features]
+default = ["wee_alloc"]
+
+[lib]
+crate-type = ["cdylib"]
+
+# panic handler set to abort to reduce size
+[profile.release]
+panic = 'abort'
+lto = true # link-time optimization
+opt-level = 'z' # optimize for size
