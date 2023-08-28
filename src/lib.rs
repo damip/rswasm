@@ -17,8 +17,8 @@ fn grab_pointer(ptr: *const u8) -> Box<[u8]> {
 }
 
 #[no_mangle]
-pub extern "C" fn __alloc(size: i32) -> *const u8 {
-    let buffer = vec![0u8; size as usize].into_boxed_slice();
+pub extern "C" fn __alloc(size: usize) -> *const u8 {
+    let buffer = vec![0u8; size].into_boxed_slice();
     Box::into_raw(buffer) as *const u8
 }
 
