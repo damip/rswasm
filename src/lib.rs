@@ -5,6 +5,9 @@ use protobuf::Message;
 include!(concat!(env!("OUT_DIR"), "/protos/mod.rs"));
 use abi::{Request, Response};
 
+const MAX_ERR_MSG_LEN: usize = 1020;
+static mut ERROR_BUFFER: [u8; MAX_ERR_MSG_LEN + 4] = [0; MAX_ERR_MSG_LEN + 4];
+
 // take ownership of a dangling shared memory pointer
 fn grab_pointer(ptr: *const u8) -> Box<[u8]> {
     unsafe {
@@ -41,6 +44,7 @@ fn msg_to_ptr<M: Message>(msg: &M) -> *const u8 {
 // The function we'll call from the guest to the host
 extern "C" {
     fn host_hello(ptr: *const u8) -> *const u8;
+    fn abort(ptr: *const u8);
 }
 
 /// Call a host ABI
@@ -48,8 +52,33 @@ fn call_abi<M: Message, R: Message, F: Fn(*const u8) -> *const u8>(f: F, request
     ptr_into_message(f(msg_to_ptr(request)))
 }
 
+fn panic_handler(info: &core::panic::PanicInfo) -> () {
+    let msg = info.to_string();
+    let msg_bytes = msg.as_bytes();
+    let length = msg_bytes.len().min(MAX_ERR_MSG_LEN) as u32; // Ensure we don't exceed buffer size
+
+    unsafe {
+        // Point to the start of the ERROR_BUFFER.
+        let buffer_start = ERROR_BUFFER.as_mut_ptr();
+
+        // Write the length (as u32, big-endian) to the start of the buffer.
+        *(buffer_start as *mut u32) = length.to_be();
+
+        // Use core::ptr::copy to copy the message bytes just after the length.
+        core::ptr::copy(msg_bytes.as_ptr(), buffer_start.offset(4), length as usize);
+
+        // Call the abort function.
+        abort(buffer_start);
+
+        // This macro will result in the WASM `unreachable` instruction.
+        unreachable!();
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn guest_func(ptr: *const u8) -> *const u8 {
+    std::panic::set_hook(Box::new(panic_handler)); // Set the custom panic handler
+
     // Decode the request from the host and free it
     let request: Request = ptr_into_message(ptr);
 
