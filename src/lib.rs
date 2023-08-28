@@ -17,8 +17,8 @@ fn grab_pointer(ptr: *const u8) -> Box<[u8]> {
 }
 
 #[no_mangle]
-pub extern "C" fn __alloc(size: usize) -> *const u8 {
-    let buffer = vec![0u8; size].into_boxed_slice();
+pub extern "C" fn __alloc(size: i32) -> *const u8 {
+    let buffer = vec![0u8; size as usize].into_boxed_slice();
     Box::into_raw(buffer) as *const u8
 }
 
@@ -77,8 +77,6 @@ fn panic_handler(info: &core::panic::PanicInfo) -> () {
 
 #[no_mangle]
 pub extern "C" fn guest_func(ptr: *const u8) -> *const u8 {
-    std::panic::set_hook(Box::new(panic_handler)); // Set the custom panic handler
-
     // Decode the request from the host and free it
     let request: Request = ptr_into_message(ptr);
 
@@ -95,4 +93,10 @@ pub extern "C" fn guest_func(ptr: *const u8) -> *const u8 {
 
     // Encode and return the response
     msg_to_ptr(&response)
+}
+
+#[no_mangle]
+pub extern "C" fn _start() {
+    // Set the custom panic handler
+    std::panic::set_hook(Box::new(panic_handler));
 }
