@@ -52,7 +52,7 @@ fn call_abi<M: Message, R: Message, F: Fn(*const u8) -> *const u8>(f: F, request
     ptr_into_message(f(msg_to_ptr(request)))
 }
 
-fn panic_handler(info: &core::panic::PanicInfo) -> () {
+fn panic_handler(info: &std::panic::PanicInfo) -> () {
     let msg = info.to_string();
     let msg_bytes = msg.as_bytes();
     let length = msg_bytes.len().min(MAX_ERR_MSG_LEN) as u32; // Ensure we don't exceed buffer size
